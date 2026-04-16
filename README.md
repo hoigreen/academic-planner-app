@@ -1,119 +1,60 @@
-# Shadcn Admin Dashboard
+# Academic Planner - Advisor Portal
 
-Admin Dashboard UI crafted with Shadcn and Vite. Built with responsiveness and accessibility in mind.
-
-![alt text](public/images/shadcn-admin.png)
-
-[![Sponsored by Clerk](https://img.shields.io/badge/Sponsored%20by-Clerk-5b6ee1?logo=clerk)](https://go.clerk.com/GttUAaK)
-
-I've been creating dashboard UIs at work and for my personal projects. I always wanted to make a reusable collection of dashboard UI for future projects; and here it is now. While I've created a few custom components, some of the code is directly adapted from ShadcnUI examples.
-
-> This is not a starter project (template) though. I'll probably make one in the future.
+A Student Learning Roadmap Management and Consulting System built with React, Vite, and Shadcn UI. This portal helps academic advisors (CVHT) analyze student data and recommend courses for upcoming semesters.
 
 ## Features
 
-- Light/dark mode
-- Responsive
-- Accessible
-- With built-in Sidebar component
-- Global search command
-- 10+ pages
-- Extra custom components
-- RTL support
-
-<details>
-<summary>Customized Components (click to expand)</summary>
-
-This project uses Shadcn UI components, but some have been slightly modified for better RTL (Right-to-Left) support and other improvements. These customized components differ from the original Shadcn UI versions.
-
-If you want to update components using the Shadcn CLI (e.g., `npx shadcn@latest add <component>`), it's generally safe for non-customized components. For the listed customized ones, you may need to manually merge changes to preserve the project's modifications and avoid overwriting RTL support or other updates.
-
-> If you don't require RTL support, you can safely update the 'RTL Updated Components' via the Shadcn CLI, as these changes are primarily for RTL compatibility. The 'Modified Components' may have other customizations to consider.
-
-### Modified Components
-
-- scroll-area
-- sonner
-- separator
-
-### RTL Updated Components
-
-- alert-dialog
-- calendar
-- command
-- dialog
-- dropdown-menu
-- select
-- table
-- sheet
-- sidebar
-- switch
-
-**Notes:**
-
-- **Modified Components**: These have general updates, potentially including RTL adjustments.
-- **RTL Updated Components**: These have specific changes for RTL language support (e.g., layout, positioning).
-- For implementation details, check the source files in `src/components/ui/`.
-- All other Shadcn UI components in the project are standard and can be safely updated via the CLI.
-
-</details>
+- **Dashboard** — Quick student lookup, program overview, and planning tools summary
+- **Student Search** — Query students by ID, name, program, and cohort with pagination
+- **Student Detail / Audit** — Progress dashboard with dynamic tabs/accordions based on knowledge blocks, transcript view, missing courses
+- **Next-term Planner** — Two-panel interface showing eligible courses and AI-ranked suggestions with explanations
+- **Plan Management** — Select, modify, and save course plans to the database
+- Light/dark mode, responsive, accessible (Shadcn UI + Radix)
 
 ## Tech Stack
 
-**UI:** [ShadcnUI](https://ui.shadcn.com) (TailwindCSS + RadixUI)
-
-**Build Tool:** [Vite](https://vitejs.dev/)
-
-**Routing:** [TanStack Router](https://tanstack.com/router/latest)
-
-**Type Checking:** [TypeScript](https://www.typescriptlang.org/)
-
-**Linting/Formatting:** [ESLint](https://eslint.org/) & [Prettier](https://prettier.io/)
-
-**Icons:** [Lucide Icons](https://lucide.dev/icons/), [Tabler Icons](https://tabler.io/icons) (Brand icons only)
-
-**Auth (partial):** [Clerk](https://go.clerk.com/GttUAaK)
+- **Framework:** React 19 + TypeScript
+- **Build:** Vite 7
+- **UI:** Shadcn UI (Tailwind CSS + Radix UI)
+- **Routing:** TanStack Router (file-based)
+- **Data Fetching:** TanStack Query + Axios
+- **State:** Zustand
+- **Backend:** .NET Core API (see `../academic-planner-api`)
+- **Database:** PostgreSQL with ORDBMS features (JSONB, composite types)
+- **Auth:** Keycloak (JWT Bearer with RBAC roles: CVHT, SV, Admin)
 
 ## Run Locally
 
-Clone the project
-
 ```bash
-  git clone https://github.com/satnaing/shadcn-admin.git
+# Install dependencies
+pnpm install
+
+# Create .env from example
+cp .env.example .env
+# Edit .env to set VITE_API_URL (default: http://localhost:8080)
+
+# Start dev server
+pnpm run dev
 ```
 
-Go to the project directory
+## Project Structure
 
-```bash
-  cd shadcn-admin
 ```
-
-Install dependencies
-
-```bash
-  pnpm install
+src/
+├── features/
+│   ├── dashboard/          # Advisor dashboard with quick lookup
+│   ├── students/           # Student search + detail/audit pages
+│   ├── planner/            # Next-term planner with AI suggestions
+│   └── ...
+├── hooks/
+│   └── use-academic-api.ts # React Query hooks for all API endpoints
+├── lib/
+│   └── api-client.ts       # Axios client + TypeScript API types
+├── routes/
+│   └── _authenticated/
+│       ├── students/       # /students, /students/:studentId
+│       └── planner/        # /planner/:studentId
+└── components/
+    ├── ui/                 # Shadcn primitives
+    └── layout/             # App shell, sidebar, header
 ```
-
-Start the server
-
-```bash
-  pnpm run dev
-```
-
-## Sponsoring this project ❤️
-
-If you find this project helpful or use this in your own work, consider [sponsoring me](https://github.com/sponsors/satnaing) to support development and maintenance. You can [buy me a coffee](https://buymeacoffee.com/satnaing) as well. Don’t worry, every penny helps. Thank you! 🙏
-
-For questions or sponsorship inquiries, feel free to reach out at [satnaingdev@gmail.com](mailto:satnaingdev@gmail.com).
-
-### Current Sponsor
-
-- [Clerk](https://go.clerk.com/GttUAaK) - authentication and user management for the modern web
-
-## Author
-
-Crafted with 🤍 by [@satnaing](https://github.com/satnaing)
-
-## License
-
-Licensed under the [MIT License](https://choosealicense.com/licenses/mit/)

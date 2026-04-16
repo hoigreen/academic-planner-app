@@ -1,56 +1,36 @@
 import {
-  Construction,
   LayoutDashboard,
-  Monitor,
-  Bug,
-  ListTodo,
-  FileX,
-  HelpCircle,
-  Lock,
-  Bell,
-  Package,
-  Palette,
-  ServerOff,
-  Settings,
-  Wrench,
-  UserCog,
-  UserX,
+  GraduationCap,
+  BookOpen,
   Users,
-  MessagesSquare,
-  ShieldCheck,
-  AudioWaveform,
-  Command,
-  GalleryVerticalEnd,
+  Settings,
+  UserCog,
+  Palette,
+  Bell,
+  Monitor,
+  Wrench,
+  HelpCircle,
+  Library,
+  CalendarCheck,
 } from 'lucide-react'
-import { ClerkLogo } from '@/assets/clerk-logo'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
   user: {
-    name: 'satnaing',
-    email: 'satnaingdev@gmail.com',
+    name: 'Academic Advisor',
+    email: 'advisor@university.edu',
     avatar: '/avatars/shadcn.jpg',
   },
   teams: [
     {
-      name: 'Shadcn Admin',
-      logo: Command,
-      plan: 'Vite + ShadcnUI',
-    },
-    {
-      name: 'Acme Inc',
-      logo: GalleryVerticalEnd,
-      plan: 'Enterprise',
-    },
-    {
-      name: 'Acme Corp.',
-      logo: AudioWaveform,
-      plan: 'Startup',
+      name: 'Academic Planner',
+      logo: GraduationCap,
+      plan: 'Advisor Portal',
     },
   ],
   navGroups: [
     {
-      title: 'General',
+      title: 'Academic',
       items: [
         {
           title: 'Dashboard',
@@ -58,110 +38,49 @@ export const sidebarData: SidebarData = {
           icon: LayoutDashboard,
         },
         {
-          title: 'Tasks',
-          url: '/tasks',
-          icon: ListTodo,
-        },
-        {
-          title: 'Apps',
-          url: '/apps',
-          icon: Package,
-        },
-        {
-          title: 'Chats',
-          url: '/chats',
-          badge: '3',
-          icon: MessagesSquare,
-        },
-        {
-          title: 'Users',
-          url: '/users',
+          title: 'Students',
+          url: '/students',
           icon: Users,
         },
         {
-          title: 'Secured by Clerk',
-          icon: ClerkLogo,
+          title: 'Programs',
+          icon: Library,
           items: [
             {
-              title: 'Sign In',
-              url: '/clerk/sign-in',
-            },
-            {
-              title: 'Sign Up',
-              url: '/clerk/sign-up',
-            },
-            {
-              title: 'User Management',
-              url: '/clerk/user-management',
+              title: 'All Programs',
+              url: '/apps',
             },
           ],
         },
       ],
     },
     {
-      title: 'Pages',
+      title: 'Planning',
       items: [
         {
-          title: 'Auth',
-          icon: ShieldCheck,
+          title: 'Curriculum',
+          icon: BookOpen,
           items: [
             {
-              title: 'Sign In',
-              url: '/sign-in',
-            },
-            {
-              title: 'Sign In (2 Col)',
-              url: '/sign-in-2',
-            },
-            {
-              title: 'Sign Up',
-              url: '/sign-up',
-            },
-            {
-              title: 'Forgot Password',
-              url: '/forgot-password',
-            },
-            {
-              title: 'OTP',
-              url: '/otp',
+              title: 'Structure',
+              url: '/help-center',
             },
           ],
         },
         {
-          title: 'Errors',
-          icon: Bug,
+          title: 'Term Planning',
+          icon: CalendarCheck,
           items: [
             {
-              title: 'Unauthorized',
-              url: '/errors/unauthorized',
-              icon: Lock,
-            },
-            {
-              title: 'Forbidden',
-              url: '/errors/forbidden',
-              icon: UserX,
-            },
-            {
-              title: 'Not Found',
-              url: '/errors/not-found',
-              icon: FileX,
-            },
-            {
-              title: 'Internal Server Error',
-              url: '/errors/internal-server-error',
-              icon: ServerOff,
-            },
-            {
-              title: 'Maintenance Error',
-              url: '/errors/maintenance-error',
-              icon: Construction,
+              title: 'Current Plans',
+              url: '/tasks',
             },
           ],
         },
       ],
     },
     {
-      title: 'Other',
+      title: 'System',
       items: [
         {
           title: 'Settings',

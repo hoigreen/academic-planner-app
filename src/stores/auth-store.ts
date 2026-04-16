@@ -51,3 +51,17 @@ export const useAuthStore = create<AuthState>()((set) => {
     },
   }
 })
+
+/**
+ * Derive a role string from Clerk publicMetadata.
+ * Clerk stores custom metadata in user.publicMetadata.role.
+ */
+export function getRoleFromClerkMetadata(
+  publicMetadata: Record<string, unknown> | undefined
+): string {
+  if (!publicMetadata) return 'student'
+  const role = publicMetadata['role']
+  if (Array.isArray(role)) return (role[0] as string) ?? 'student'
+  if (typeof role === 'string') return role
+  return 'student'
+}
