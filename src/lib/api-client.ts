@@ -9,8 +9,10 @@ export const apiClient = axios.create({
   },
 })
 
-// Token getter injected at app startup by the Clerk provider wrapper.
-// Falls back to localStorage for dev/testing without Clerk.
+// Token getter injected at app startup by the Keycloak provider wrapper
+// (see `src/main.tsx`). It should return a fresh access token from
+// `keycloak-js`, silently refreshing it if close to expiry.
+// Falls back to localStorage for dev/testing without Keycloak.
 let _tokenGetter: (() => Promise<string | null>) | null = null
 
 export function setTokenGetter(getter: () => Promise<string | null>) {

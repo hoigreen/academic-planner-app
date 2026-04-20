@@ -7,10 +7,11 @@ import {
   QueryClientProvider,
 } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { ClerkProvider } from '@clerk/clerk-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { handleServerError } from '@/lib/handle-server-error'
+import keycloak, { KeycloakProvider } from '@/lib/keycloak'
+import { setTokenGetter } from '@/lib/api-client'
 import { DirectionProvider } from './context/direction-provider'
 import { FontProvider } from './context/font-provider'
 import { ThemeProvider } from './context/theme-provider'
@@ -18,8 +19,6 @@ import { ThemeProvider } from './context/theme-provider'
 import { routeTree } from './routeTree.gen'
 // Styles
 import './styles/index.css'
-
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,8 +56,10 @@ const queryClient = new QueryClient({
         if (error.response?.status === 401) {
           toast.error('Session expired!')
           useAuthStore.getState().auth.reset()
-          const redirect = `${router.history.location.href}`
-          router.navigate({ to: '/sign-in', search: { redirect } })
+          // Kick the user back to the Keycloak login page
+          keycloak.login({
+            redirectUri: window.location.href,
+          })
         }
         if (error.response?.status === 500) {
           toast.error('Internal Server Error!')
@@ -73,6 +74,20 @@ const queryClient = new QueryClient({
       }
     },
   }),
+})
+
+// Wire Keycloak's token getter into the Axios interceptor as soon as the
+// adapter is available. The interceptor transparently refreshes near-expired
+// tokens before attaching them to outgoing requests.
+setTokenGetter(async () => {
+  try {
+    if (!keycloak.authenticated) return null
+    // Refresh if the token expires within 30 seconds
+    await keycloak.updateToken(30)
+    return keycloak.token ?? null
+  } catch {
+    return null
+  }
 })
 
 // Create a new router instance
@@ -96,7 +111,7 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
-      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl='/sign-in'>
+      <KeycloakProvider loading={null}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <FontProvider>
@@ -106,7 +121,7 @@ if (!rootElement.innerHTML) {
             </FontProvider>
           </ThemeProvider>
         </QueryClientProvider>
-      </ClerkProvider>
+      </KeycloakProvider>
     </StrictMode>
   )
 }
