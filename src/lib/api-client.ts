@@ -394,18 +394,10 @@ export async function fetchProgramConcentrations(programCode: string) {
 }
 
 export async function fetchStudentConcentration(studentId: string): Promise<StudentConcentrationDto | null> {
-  try {
-    const { data } = await apiClient.get<ApiEnvelope<StudentConcentrationDto>>(
-      `/students/${studentId}/concentration`
-    )
-    return data.data
-  } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'response' in err) {
-      const axiosErr = err as { response?: { status?: number } }
-      if (axiosErr.response?.status === 404) return null
-    }
-    throw err
-  }
+  const { data } = await apiClient.get<ApiEnvelope<StudentConcentrationDto | null>>(
+    `/students/${studentId}/concentration`
+  )
+  return data.data
 }
 
 export async function assignStudentConcentration(

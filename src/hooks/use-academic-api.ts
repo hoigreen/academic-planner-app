@@ -137,7 +137,6 @@ export function useSearchStudents(params: {
   return useQuery({
     queryKey: ['search-students', params],
     queryFn: () => searchStudents(params),
-    enabled: !!(params.studentId || params.programCode || params.cohortCode || params.keyword),
     placeholderData: (prev) => prev,
   })
 }

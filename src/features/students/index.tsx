@@ -50,7 +50,6 @@ export function StudentSearch() {
   const { data: programs } = usePrograms()
   const { data: cohorts } = useProgramCohorts(programCode || undefined)
 
-  const hasSearch = !!(searchId || keyword || programCode || cohortCode)
   const { data: searchResult, isLoading } = useSearchStudents({
     studentId: searchId || undefined,
     keyword: keyword || undefined,
@@ -152,7 +151,7 @@ export function StudentSearch() {
                   Search
                 </Button>
 
-                {hasSearch && (
+                {(searchId || keyword || programCode || cohortCode) && (
                   <Button
                     type='button'
                     variant='ghost'
@@ -172,105 +171,103 @@ export function StudentSearch() {
             </CardContent>
           </Card>
 
-          {hasSearch && (
-            <Card>
-              <CardHeader>
-                <CardTitle className='flex items-center gap-2'>
-                  <Users className='h-5 w-5' />
-                  Results
-                  {searchResult && (
-                    <Badge variant='secondary'>{searchResult.totalCount} found</Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className='flex items-center justify-center py-12'>
-                    <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
-                  </div>
-                ) : searchResult && searchResult.students.length > 0 ? (
-                  <>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Student ID</TableHead>
-                          <TableHead>Full Name</TableHead>
-                          <TableHead>Program</TableHead>
-                          <TableHead>Cohort</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>IELTS</TableHead>
-                          <TableHead className='w-10' />
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {searchResult.students.map((student) => (
-                          <TableRow
-                            key={student.studentId}
-                            className='cursor-pointer hover:bg-muted/50'
-                            onClick={() =>
-                              navigate({
-                                to: '/students/$studentId',
-                                params: { studentId: student.studentId },
-                              })
-                            }
-                          >
-                            <TableCell className='font-mono font-medium'>
-                              {student.studentId}
-                            </TableCell>
-                            <TableCell>{student.fullName}</TableCell>
-                            <TableCell>
-                              <Badge variant='outline'>{student.programCode ?? '—'}</Badge>
-                            </TableCell>
-                            <TableCell>{student.cohortCode ?? '—'}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={student.status === 'active' ? 'default' : 'secondary'}
-                              >
-                                {student.status ?? 'unknown'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{student.ieltsScore ?? '—'}</TableCell>
-                            <TableCell>
-                              <ChevronRight className='h-4 w-4 text-muted-foreground' />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-
-                    {searchResult.totalCount > 20 && (
-                      <div className='mt-4 flex items-center justify-center gap-2'>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          disabled={page <= 1}
-                          onClick={() => setPage((p) => p - 1)}
-                        >
-                          Previous
-                        </Button>
-                        <span className='text-sm text-muted-foreground'>
-                          Page {page} of {Math.ceil(searchResult.totalCount / 20)}
-                        </span>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          disabled={page * 20 >= searchResult.totalCount}
-                          onClick={() => setPage((p) => p + 1)}
-                        >
-                          Next
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className='flex flex-col items-center justify-center py-12 text-muted-foreground'>
-                    <Users className='mb-2 h-12 w-12 opacity-30' />
-                    <p>No students found matching your criteria</p>
-                  </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-2'>
+                <Users className='h-5 w-5' />
+                Students
+                {searchResult && (
+                  <Badge variant='secondary'>{searchResult.totalCount} found</Badge>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className='flex items-center justify-center py-12'>
+                  <Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
+                </div>
+              ) : searchResult && searchResult.students.length > 0 ? (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Student ID</TableHead>
+                        <TableHead>Full Name</TableHead>
+                        <TableHead>Program</TableHead>
+                        <TableHead>Cohort</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>IELTS</TableHead>
+                        <TableHead className='w-10' />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {searchResult.students.map((student) => (
+                        <TableRow
+                          key={student.studentId}
+                          className='cursor-pointer hover:bg-muted/50'
+                          onClick={() =>
+                            navigate({
+                              to: '/students/$studentId',
+                              params: { studentId: student.studentId },
+                            })
+                          }
+                        >
+                          <TableCell className='font-mono font-medium'>
+                            {student.studentId}
+                          </TableCell>
+                          <TableCell>{student.fullName}</TableCell>
+                          <TableCell>
+                            <Badge variant='outline'>{student.programCode ?? '—'}</Badge>
+                          </TableCell>
+                          <TableCell>{student.cohortCode ?? '—'}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={student.status === 'active' ? 'default' : 'secondary'}
+                            >
+                              {student.status ?? 'unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{student.ieltsScore ?? '—'}</TableCell>
+                          <TableCell>
+                            <ChevronRight className='h-4 w-4 text-muted-foreground' />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {searchResult.totalCount > 20 && (
+                    <div className='mt-4 flex items-center justify-center gap-2'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        disabled={page <= 1}
+                        onClick={() => setPage((p) => p - 1)}
+                      >
+                        Previous
+                      </Button>
+                      <span className='text-sm text-muted-foreground'>
+                        Page {page} of {Math.ceil(searchResult.totalCount / 20)}
+                      </span>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        disabled={page * 20 >= searchResult.totalCount}
+                        onClick={() => setPage((p) => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className='flex flex-col items-center justify-center py-12 text-muted-foreground'>
+                  <Users className='mb-2 h-12 w-12 opacity-30' />
+                  <p>No students found matching your criteria</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </Main>
     </>
