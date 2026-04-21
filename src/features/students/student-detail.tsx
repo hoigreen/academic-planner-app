@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   XCircle,
   Loader2,
   TrendingUp,
+  Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -40,15 +41,29 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { CurriculumBlockAccordion } from '@/components/curriculum/CurriculumBlockAccordion'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { toast } from 'sonner'
+import {
   useStudent,
   useStudentAudit,
   useCurriculumStructure,
   useTranscript,
   useEligibleCourses,
+  useStudentConcentration,
+  useProgramConcentrations,
+  useAssignConcentration,
+  useUpdateConcentration,
 } from '@/hooks/use-academic-api'
 import { ProgressRing } from './components/progress-ring'
 
 export function StudentDetail({ studentId }: { studentId: string }) {
+  const [selectedConcentrationId, setSelectedConcentrationId] = useState<string>('')
+
   const { data: student, isLoading: loadingStudent } = useStudent(studentId)
   const { data: audit, isLoading: loadingAudit } = useStudentAudit(studentId)
   const { data: transcript } = useTranscript(studentId)
@@ -57,6 +72,28 @@ export function StudentDetail({ studentId }: { studentId: string }) {
     student?.programCode ?? undefined,
     student?.cohortCode ?? undefined
   )
+  const { data: currentConcentration, isLoading: loadingConcentration } = useStudentConcentration(studentId)
+  const { data: availableConcentrations } = useProgramConcentrations(student?.programCode ?? undefined)
+  const assignMutation = useAssignConcentration()
+  const updateMutation = useUpdateConcentration()
+
+  const handleSaveConcentration = async () => {
+    if (!selectedConcentrationId) return
+    const concentrationId = Number(selectedConcentrationId)
+    try {
+      if (currentConcentration) {
+        await updateMutation.mutateAsync({ studentId, concentrationId })
+      } else {
+        await assignMutation.mutateAsync({ studentId, concentrationId })
+      }
+      toast.success('Concentration updated successfully')
+      setSelectedConcentrationId('')
+    } catch {
+      toast.error('Failed to update concentration')
+    }
+  }
+
+  const isSavingConcentration = assignMutation.isPending || updateMutation.isPending
 
   const completedSet = useMemo(() => {
     const set = new Set<string>()
@@ -248,6 +285,7 @@ export function StudentDetail({ studentId }: { studentId: string }) {
                 <TabsTrigger value='curriculum'>Curriculum Structure</TabsTrigger>
                 <TabsTrigger value='transcript'>Transcript</TabsTrigger>
                 <TabsTrigger value='missing'>Missing Courses</TabsTrigger>
+                <TabsTrigger value='concentration'>Concentration</TabsTrigger>
               </TabsList>
             </div>
 
@@ -414,6 +452,118 @@ export function StudentDetail({ studentId }: { studentId: string }) {
                     <span className='text-sm'>All required courses completed!</span>
                   </CardContent>
                 </Card>
+              )}
+            </TabsContent>
+
+            <TabsContent value='concentration' className='space-y-4'>
+              {loadingConcentration ? (
+                <div className='flex items-center gap-2 py-8 text-muted-foreground'>
+                  <Loader2 className='h-5 w-5 animate-spin' />
+                  <span className='text-sm'>Loading concentration data...</span>
+                </div>
+              ) : (
+                <div className='space-y-4'>
+                  {/* Current Concentration */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className='flex items-center gap-2'>
+                        <Layers className='h-5 w-5' />
+                        Current Concentration
+                      </CardTitle>
+                      <CardDescription>
+                        The active concentration track assigned to this student
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {currentConcentration ? (
+                        <div className='space-y-2'>
+                          <div className='flex items-center gap-3'>
+                            <Badge variant='default' className='font-mono text-sm'>
+                              {currentConcentration.concentrationCode}
+                            </Badge>
+                            <span className='font-medium'>{currentConcentration.concentrationName}</span>
+                            <Badge
+                              variant={currentConcentration.status === 'active' ? 'default' : 'secondary'}
+                              className='capitalize'
+                            >
+                              {currentConcentration.status}
+                            </Badge>
+                          </div>
+                          {currentConcentration.approvedTermCode && (
+                            <p className='text-sm text-muted-foreground'>
+                              Approved term:{' '}
+                              <span className='font-mono font-medium'>
+                                {currentConcentration.approvedTermCode}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className='flex items-center gap-2 text-muted-foreground'>
+                          <AlertTriangle className='h-4 w-4 text-amber-500' />
+                          <span className='text-sm'>No concentration assigned yet</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Change / Assign Concentration */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className='text-base'>
+                        {currentConcentration ? 'Change Concentration' : 'Assign Concentration'}
+                      </CardTitle>
+                      <CardDescription>
+                        {availableConcentrations?.length
+                          ? `${availableConcentrations.length} concentration(s) available for ${student.programCode}`
+                          : 'No concentrations available for this program'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {availableConcentrations && availableConcentrations.length > 0 ? (
+                        <div className='flex flex-wrap items-end gap-3'>
+                          <div className='min-w-[260px]'>
+                            <label className='mb-1.5 block text-sm font-medium'>
+                              Select Concentration
+                            </label>
+                            <Select
+                              value={selectedConcentrationId}
+                              onValueChange={setSelectedConcentrationId}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder='Choose a concentration...' />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableConcentrations.map((c) => (
+                                  <SelectItem
+                                    key={c.concentrationId}
+                                    value={String(c.concentrationId)}
+                                  >
+                                    {c.concentrationCode} — {c.concentrationName}
+                                    {c.minCredits ? ` (min ${c.minCredits} cr)` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            onClick={handleSaveConcentration}
+                            disabled={!selectedConcentrationId || isSavingConcentration}
+                          >
+                            {isSavingConcentration && (
+                              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                            )}
+                            {currentConcentration ? 'Update' : 'Assign'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className='text-sm text-muted-foreground'>
+                          No concentrations configured for {student.programCode ?? 'this program'}.
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               )}
             </TabsContent>
           </Tabs>

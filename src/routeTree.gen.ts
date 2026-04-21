@@ -27,6 +27,7 @@ import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedStudentsIndexRouteImport } from './routes/_authenticated/students/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
+import { Route as AuthenticatedCurriculumIndexRouteImport } from './routes/_authenticated/curriculum/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
 import { Route as AuthenticatedStudentsStudentIdRouteImport } from './routes/_authenticated/students/$studentId'
@@ -130,6 +131,12 @@ const AuthenticatedHelpCenterIndexRoute =
     path: '/help-center/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCurriculumIndexRoute =
+  AuthenticatedCurriculumIndexRouteImport.update({
+    id: '/curriculum/',
+    path: '/curriculum/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
   id: '/chats/',
   path: '/chats/',
@@ -205,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/students/$studentId': typeof AuthenticatedStudentsStudentIdRoute
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
+  '/curriculum': typeof AuthenticatedCurriculumIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/students': typeof AuthenticatedStudentsIndexRoute
@@ -232,6 +240,7 @@ export interface FileRoutesByTo {
   '/students/$studentId': typeof AuthenticatedStudentsStudentIdRoute
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
+  '/curriculum': typeof AuthenticatedCurriculumIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/students': typeof AuthenticatedStudentsIndexRoute
@@ -262,6 +271,7 @@ export interface FileRoutesById {
   '/_authenticated/students/$studentId': typeof AuthenticatedStudentsStudentIdRoute
   '/_authenticated/apps/': typeof AuthenticatedAppsIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
+  '/_authenticated/curriculum/': typeof AuthenticatedCurriculumIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/students/': typeof AuthenticatedStudentsIndexRoute
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/students/$studentId'
     | '/apps'
     | '/chats'
+    | '/curriculum'
     | '/help-center'
     | '/settings/'
     | '/students'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/students/$studentId'
     | '/apps'
     | '/chats'
+    | '/curriculum'
     | '/help-center'
     | '/settings'
     | '/students'
@@ -348,6 +360,7 @@ export interface FileRouteTypes {
     | '/_authenticated/students/$studentId'
     | '/_authenticated/apps/'
     | '/_authenticated/chats/'
+    | '/_authenticated/curriculum/'
     | '/_authenticated/help-center/'
     | '/_authenticated/settings/'
     | '/_authenticated/students/'
@@ -497,6 +510,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHelpCenterIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/curriculum/': {
+      id: '/_authenticated/curriculum/'
+      path: '/curriculum'
+      fullPath: '/curriculum'
+      preLoaderRoute: typeof AuthenticatedCurriculumIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/chats/': {
       id: '/_authenticated/chats/'
       path: '/chats'
@@ -594,6 +614,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedStudentsStudentIdRoute: typeof AuthenticatedStudentsStudentIdRoute
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
+  AuthenticatedCurriculumIndexRoute: typeof AuthenticatedCurriculumIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedStudentsIndexRoute: typeof AuthenticatedStudentsIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
@@ -608,6 +629,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedStudentsStudentIdRoute: AuthenticatedStudentsStudentIdRoute,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
+  AuthenticatedCurriculumIndexRoute: AuthenticatedCurriculumIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedStudentsIndexRoute: AuthenticatedStudentsIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,

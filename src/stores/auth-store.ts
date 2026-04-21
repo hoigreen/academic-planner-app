@@ -8,6 +8,7 @@ export type AppRole = 'Admin' | 'CVHT' | 'SV'
 
 interface AuthUser {
   accountNo: string
+  name: string
   email: string
   role: string[]
   exp: number
@@ -62,10 +63,13 @@ export const useAuthStore = create<AuthState>()((set) => {
  * contribute to the user's effective role set.
  */
 export interface KeycloakParsedToken extends KeycloakTokenParsed {
-  realm_access?: { roles?: string[] }
-  resource_access?: Record<string, { roles?: string[] }>
+  realm_access?: { roles: string[] }
+  resource_access?: Record<string, { roles: string[] }>
   preferred_username?: string
   email?: string
+  name?: string
+  given_name?: string
+  family_name?: string
 }
 
 // Roles used by the application, in priority order for `getPrimaryRole`.
@@ -115,9 +119,15 @@ export function buildAuthUserFromKeycloak(
   clientId?: string
 ): AuthUser | null {
   if (!tokenParsed) return null
+  const fullName =
+    tokenParsed.name ||
+    [tokenParsed.given_name, tokenParsed.family_name].filter(Boolean).join(' ') ||
+    tokenParsed.preferred_username ||
+    ''
   return {
     accountNo: tokenParsed.sub ?? tokenParsed.preferred_username ?? '',
-    email: tokenParsed.email ?? '',
+    name: fullName,
+    email: tokenParsed.email ?? tokenParsed.preferred_username ?? '',
     role: getRolesFromKeycloakToken(tokenParsed, clientId),
     exp: tokenParsed.exp ?? 0,
   }

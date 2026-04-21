@@ -10,8 +10,14 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { handleServerError } from '@/lib/handle-server-error'
-import keycloak, { KeycloakProvider } from '@/lib/keycloak'
 import { setTokenGetter } from '@/lib/api-client'
+import {
+  refreshAccessToken,
+  storeTokens,
+  clearStoredTokens,
+  isTokenExpired,
+  getStoredRefreshToken,
+} from '@/lib/keycloak-auth'
 import { DirectionProvider } from './context/direction-provider'
 import { FontProvider } from './context/font-provider'
 import { ThemeProvider } from './context/theme-provider'
@@ -54,40 +60,42 @@ const queryClient = new QueryClient({
     onError: (error) => {
       if (error instanceof AxiosError) {
         if (error.response?.status === 401) {
-          toast.error('Session expired!')
+          toast.error('Session expired. Please sign in again.')
+          clearStoredTokens()
           useAuthStore.getState().auth.reset()
-          // Kick the user back to the Keycloak login page
-          keycloak.login({
-            redirectUri: window.location.href,
-          })
+          void router.navigate({ to: '/sign-in', replace: true })
         }
         if (error.response?.status === 500) {
           toast.error('Internal Server Error!')
-          // Only navigate to error page in production to avoid disrupting HMR in development
           if (import.meta.env.PROD) {
-            router.navigate({ to: '/500' })
+            void router.navigate({ to: '/500' })
           }
-        }
-        if (error.response?.status === 403) {
-          // router.navigate("/forbidden", { replace: true });
         }
       }
     },
   }),
 })
 
-// Wire Keycloak's token getter into the Axios interceptor as soon as the
-// adapter is available. The interceptor transparently refreshes near-expired
-// tokens before attaching them to outgoing requests.
+// Wire up the API client token getter with silent refresh support
 setTokenGetter(async () => {
-  try {
-    if (!keycloak.authenticated) return null
-    // Refresh if the token expires within 30 seconds
-    await keycloak.updateToken(30)
-    return keycloak.token ?? null
-  } catch {
-    return null
+  const state = useAuthStore.getState()
+
+  if (isTokenExpired()) {
+    const refreshToken = getStoredRefreshToken()
+    if (!refreshToken) return null
+    try {
+      const tokens = await refreshAccessToken()
+      storeTokens(tokens)
+      state.auth.setAccessToken(tokens.access_token)
+      return tokens.access_token
+    } catch {
+      clearStoredTokens()
+      state.auth.reset()
+      return null
+    }
   }
+
+  return state.auth.accessToken || null
 })
 
 // Create a new router instance
@@ -111,17 +119,15 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement)
   root.render(
     <StrictMode>
-      <KeycloakProvider loading={null}>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <FontProvider>
-              <DirectionProvider>
-                <RouterProvider router={router} />
-              </DirectionProvider>
-            </FontProvider>
-          </ThemeProvider>
-        </QueryClientProvider>
-      </KeycloakProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <FontProvider>
+            <DirectionProvider>
+              <RouterProvider router={router} />
+            </DirectionProvider>
+          </FontProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </StrictMode>
   )
 }

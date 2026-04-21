@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
+import { useQueries } from '@tanstack/react-query'
 import {
   GraduationCap,
   Users,
@@ -7,9 +8,22 @@ import {
   Search,
   ArrowRight,
   Loader2,
-  Upload,
   LayoutGrid,
+  TrendingUp,
 } from 'lucide-react'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -19,35 +33,55 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { CurriculumBlockAccordion } from '@/components/curriculum/CurriculumBlockAccordion'
-import { usePrograms, useProgramCohorts, useCurriculumStructure } from '@/hooks/use-academic-api'
+import { usePrograms } from '@/hooks/use-academic-api'
+import { fetchProgramCohorts } from '@/lib/api-client'
+
+const CHART_COLORS = [
+  'hsl(221, 83%, 53%)',
+  'hsl(142, 71%, 45%)',
+  'hsl(262, 83%, 58%)',
+  'hsl(32, 95%, 44%)',
+  'hsl(346, 84%, 61%)',
+  'hsl(187, 85%, 43%)',
+]
 
 export function Dashboard() {
   const navigate = useNavigate()
   const [quickSearchId, setQuickSearchId] = useState('')
 
-  // Curriculum explorer state
-  const [selectedProgram, setSelectedProgram] = useState<string>('')
-  const [selectedCohort, setSelectedCohort] = useState<string>('')
-
   const { data: programs, isLoading: loadingPrograms } = usePrograms()
-  const { data: cohorts, isLoading: loadingCohorts } = useProgramCohorts(selectedProgram || undefined)
-  const { data: curriculum, isLoading: loadingCurriculum } = useCurriculumStructure(
-    selectedProgram || undefined,
-    selectedCohort || undefined
-  )
+
+  // Fetch cohorts for every program in parallel to build chart data
+  const cohortQueries = useQueries({
+    queries: (programs ?? []).map((p) => ({
+      queryKey: ['program-cohorts', p.programCode],
+      queryFn: () => fetchProgramCohorts(p.programCode),
+      enabled: !!programs,
+    })),
+  })
+
+  const allCohortsFetched = cohortQueries.every((q) => !q.isLoading)
+
+  const cohortsPerProgram = (programs ?? []).map((p, i) => ({
+    program: p.programCode,
+    programName: p.programName,
+    cohorts: cohortQueries[i]?.data?.length ?? 0,
+  }))
+
+  const totalCohorts = cohortsPerProgram.reduce((sum, p) => sum + p.cohorts, 0)
+
+  // Pie chart data — share of cohorts per program
+  const pieData = cohortsPerProgram
+    .filter((p) => p.cohorts > 0)
+    .map((p, i) => ({
+      name: p.program,
+      value: p.cohorts,
+      fill: CHART_COLORS[i % CHART_COLORS.length],
+    }))
 
   const handleQuickLookup = (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,12 +109,98 @@ export function Dashboard() {
       <Main>
         <div className='space-y-6'>
           <div className='mb-2'>
-            <h2 className='text-2xl font-bold tracking-tight'>
-              Student Learning Roadmap System
-            </h2>
+            <h2 className='text-2xl font-bold tracking-tight'>Overview</h2>
             <p className='text-muted-foreground'>
-              Manage and consult student academic roadmaps powered by ORDBMS knowledge blocks.
+              Academic programs summary and key metrics at a glance.
             </p>
+          </div>
+
+          {/* Summary Stat Cards */}
+          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+            {/* Active Programs */}
+            <Card>
+              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                <CardTitle className='text-sm font-medium'>Active Programs</CardTitle>
+                <BookOpen className='h-4 w-4 text-muted-foreground' />
+              </CardHeader>
+              <CardContent>
+                {loadingPrograms ? (
+                  <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+                ) : (
+                  <>
+                    <div className='text-3xl font-bold'>{programs?.length ?? 0}</div>
+                    <p className='mt-1 text-xs text-muted-foreground'>
+                      Academic programs registered
+                    </p>
+                    {programs && programs.length > 0 && (
+                      <div className='mt-2 flex flex-wrap gap-1'>
+                        {programs.slice(0, 4).map((p) => (
+                          <span
+                            key={p.programCode}
+                            className='rounded-md bg-muted px-2 py-0.5 font-mono text-xs'
+                          >
+                            {p.programCode}
+                          </span>
+                        ))}
+                        {programs.length > 4 && (
+                          <span className='rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground'>
+                            +{programs.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Total Cohorts */}
+            <Card>
+              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                <CardTitle className='text-sm font-medium'>Total Cohorts</CardTitle>
+                <TrendingUp className='h-4 w-4 text-muted-foreground' />
+              </CardHeader>
+              <CardContent>
+                {!allCohortsFetched ? (
+                  <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+                ) : (
+                  <>
+                    <div className='text-3xl font-bold'>{totalCohorts}</div>
+                    <p className='mt-1 text-xs text-muted-foreground'>
+                      Cohorts across all programs
+                    </p>
+                    <p className='mt-2 text-xs text-muted-foreground'>
+                      Avg{' '}
+                      <span className='font-medium text-foreground'>
+                        {programs?.length
+                          ? (totalCohorts / programs.length).toFixed(1)
+                          : '0'}
+                      </span>{' '}
+                      cohorts per program
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Students Quick Access */}
+            <Card
+              className='cursor-pointer transition-colors hover:bg-muted/50'
+              onClick={() => navigate({ to: '/students' })}
+            >
+              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                <CardTitle className='text-sm font-medium'>Students</CardTitle>
+                <Users className='h-4 w-4 text-muted-foreground' />
+              </CardHeader>
+              <CardContent>
+                <p className='text-sm text-muted-foreground'>
+                  Search by ID, name, program, or cohort. View academic progress and audit results.
+                </p>
+                <Button variant='link' className='mt-2 h-auto p-0 text-sm'>
+                  Browse Students <ArrowRight className='ml-1 h-3 w-3' />
+                </Button>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Quick Student Lookup */}
@@ -110,227 +230,155 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Statistics Cards */}
-          <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+          {/* Charts Row */}
+          <div className='grid gap-4 lg:grid-cols-5'>
+            {/* Cohorts per Program — Bar Chart */}
+            <Card className='lg:col-span-3'>
+              <CardHeader>
+                <CardTitle>Cohorts per Program</CardTitle>
+                <CardDescription>
+                  Number of cohorts registered under each academic program
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!allCohortsFetched || loadingPrograms ? (
+                  <div className='flex h-48 items-center justify-center'>
+                    <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+                  </div>
+                ) : cohortsPerProgram.length === 0 ? (
+                  <div className='flex h-48 items-center justify-center text-sm text-muted-foreground'>
+                    No program data available
+                  </div>
+                ) : (
+                  <ResponsiveContainer width='100%' height={220}>
+                    <BarChart
+                      data={cohortsPerProgram}
+                      margin={{ top: 4, right: 8, left: -16, bottom: 4 }}
+                    >
+                      <CartesianGrid strokeDasharray='3 3' className='stroke-border' />
+                      <XAxis
+                        dataKey='program'
+                        tick={{ fontSize: 12 }}
+                        className='fill-muted-foreground'
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fontSize: 12 }}
+                        className='fill-muted-foreground'
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          fontSize: 12,
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: number, _name: string, props) => [
+                          `${value} cohort${value !== 1 ? 's' : ''}`,
+                          props.payload.programName,
+                        ]}
+                      />
+                      <Bar dataKey='cohorts' radius={[4, 4, 0, 0]}>
+                        {cohortsPerProgram.map((_entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Cohort Distribution — Pie Chart */}
+            <Card className='lg:col-span-2'>
+              <CardHeader>
+                <CardTitle>Cohort Distribution</CardTitle>
+                <CardDescription>Share of cohorts by program</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {!allCohortsFetched || loadingPrograms ? (
+                  <div className='flex h-48 items-center justify-center'>
+                    <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+                  </div>
+                ) : pieData.length === 0 ? (
+                  <div className='flex h-48 items-center justify-center text-sm text-muted-foreground'>
+                    No cohort data yet
+                  </div>
+                ) : (
+                  <ResponsiveContainer width='100%' height={220}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx='50%'
+                        cy='45%'
+                        innerRadius={50}
+                        outerRadius={80}
+                        paddingAngle={3}
+                        dataKey='value'
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ fontSize: 12, borderRadius: '8px' }}
+                        formatter={(value: number) => [
+                          `${value} cohort${value !== 1 ? 's' : ''}`,
+                        ]}
+                      />
+                      <Legend
+                        iconType='circle'
+                        iconSize={8}
+                        formatter={(value) => (
+                          <span style={{ fontSize: 11 }}>{value}</span>
+                        )}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Navigation */}
+          <div className='grid gap-4 sm:grid-cols-2'>
+            <Card
+              className='cursor-pointer transition-colors hover:bg-muted/50'
+              onClick={() => navigate({ to: '/curriculum' })}
+            >
+              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+                <CardTitle className='text-sm font-medium'>Curriculum Explorer</CardTitle>
+                <LayoutGrid className='h-4 w-4 text-muted-foreground' />
+              </CardHeader>
+              <CardContent>
+                <p className='text-sm text-muted-foreground'>
+                  Browse knowledge block structures, categories, and course mappings for any program and cohort.
+                </p>
+                <Button variant='link' className='mt-2 h-auto p-0 text-sm'>
+                  Explore Curriculum <ArrowRight className='ml-1 h-3 w-3' />
+                </Button>
+              </CardContent>
+            </Card>
+
             <Card
               className='cursor-pointer transition-colors hover:bg-muted/50'
               onClick={() => navigate({ to: '/students' })}
             >
               <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>Student Search</CardTitle>
+                <CardTitle className='text-sm font-medium'>Student Roster</CardTitle>
                 <Users className='h-4 w-4 text-muted-foreground' />
               </CardHeader>
               <CardContent>
                 <p className='text-sm text-muted-foreground'>
-                  Search students by ID, name, program, or cohort. View academic progress and audit results.
+                  View all students, filter by program or cohort, and access individual academic roadmaps.
                 </p>
                 <Button variant='link' className='mt-2 h-auto p-0 text-sm'>
-                  Go to Search <ArrowRight className='ml-1 h-3 w-3' />
+                  View Students <ArrowRight className='ml-1 h-3 w-3' />
                 </Button>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>Active Programs</CardTitle>
-                <BookOpen className='h-4 w-4 text-muted-foreground' />
-              </CardHeader>
-              <CardContent>
-                {loadingPrograms ? (
-                  <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
-                ) : (
-                  <>
-                    <div className='text-2xl font-bold'>{programs?.length ?? 0}</div>
-                    <p className='text-xs text-muted-foreground'>
-                      Academic programs available
-                    </p>
-                    {programs && programs.length > 0 && (
-                      <div className='mt-2 flex flex-wrap gap-1'>
-                        {programs.slice(0, 5).map((p) => (
-                          <span
-                            key={p.programCode}
-                            className='rounded-md bg-muted px-2 py-0.5 text-xs font-mono'
-                          >
-                            {p.programCode}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-                <CardTitle className='text-sm font-medium'>Curriculum Import</CardTitle>
-                <Upload className='h-4 w-4 text-muted-foreground' />
-              </CardHeader>
-              <CardContent>
-                <p className='text-sm text-muted-foreground'>
-                  Upload an Excel (.xlsx) file to import curriculum blocks and courses via the ORDBMS pipeline.
-                </p>
-                <div className='mt-2 flex flex-wrap gap-1 text-xs'>
-                  <span className='rounded-full bg-blue-100 px-2 py-0.5 text-blue-800 dark:bg-blue-900 dark:text-blue-200'>
-                    knowledge_block[]
-                  </span>
-                  <span className='rounded-full bg-purple-100 px-2 py-0.5 text-purple-800 dark:bg-purple-900 dark:text-purple-200'>
-                    JSONB course_mapping
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
           </div>
-
-          {/* Dynamic Curriculum Structure Explorer */}
-          <Card>
-            <CardHeader>
-              <CardTitle className='flex items-center gap-2'>
-                <LayoutGrid className='h-5 w-5' />
-                Curriculum Structure Explorer
-              </CardTitle>
-              <CardDescription>
-                Select a program and cohort to view the knowledge_block[] structure stored in ORDBMS
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className='mb-4 flex flex-wrap gap-3'>
-                <Select
-                  value={selectedProgram}
-                  onValueChange={(v) => {
-                    setSelectedProgram(v)
-                    setSelectedCohort('')
-                  }}
-                >
-                  <SelectTrigger className='w-56'>
-                    <SelectValue placeholder='Select Program...' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {programs?.map((p) => (
-                      <SelectItem key={p.programCode} value={p.programCode}>
-                        {p.programCode} — {p.programName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={selectedCohort}
-                  onValueChange={setSelectedCohort}
-                  disabled={!selectedProgram || loadingCohorts}
-                >
-                  <SelectTrigger className='w-40'>
-                    <SelectValue placeholder='Select Cohort...' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cohorts?.map((c) => (
-                      <SelectItem key={c.cohortCode} value={c.cohortCode}>
-                        {c.cohortCode} {c.startYear ? `(${c.startYear})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {loadingCurriculum && (
-                <div className='flex items-center gap-2 py-4 text-sm text-muted-foreground'>
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                  Loading curriculum structure...
-                </div>
-              )}
-
-              {curriculum && !loadingCurriculum && (
-                <Tabs defaultValue='blocks'>
-                  <TabsList className='mb-4'>
-                    <TabsTrigger value='blocks'>
-                      Knowledge Blocks
-                      <span className='ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-mono'>
-                        {curriculum.knowledgeBlocks.length}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger value='categories'>
-                      Categories
-                      <span className='ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs font-mono'>
-                        {curriculum.categories.length}
-                      </span>
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value='blocks'>
-                    <div className='mb-3 flex items-center gap-4 text-sm text-muted-foreground'>
-                      <span>
-                        <span className='font-medium text-foreground'>
-                          {curriculum.programName}
-                        </span>{' '}
-                        / Cohort{' '}
-                        <span className='font-medium text-foreground'>
-                          {curriculum.cohortCode}
-                        </span>
-                      </span>
-                      {curriculum.totalCredits && (
-                        <span className='rounded-full bg-muted px-2 py-0.5 text-xs'>
-                          {curriculum.totalCredits} total credits
-                        </span>
-                      )}
-                    </div>
-                    <CurriculumBlockAccordion
-                      knowledgeBlocks={curriculum.knowledgeBlocks}
-                      courseMapping={curriculum.courseMapping}
-                      courseDetails={curriculum.categories.flatMap((cat) => cat.courses)}
-                      defaultOpenBlocks={[curriculum.knowledgeBlocks[0]?.blockName]}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value='categories'>
-                    <div className='space-y-3'>
-                      {curriculum.categories.map((cat) => (
-                        <div
-                          key={cat.categoryId}
-                          className='rounded-lg border p-4'
-                        >
-                          <div className='flex items-center justify-between'>
-                            <span className='font-semibold'>{cat.categoryName}</span>
-                            {cat.minCredits && (
-                              <span className='text-sm text-muted-foreground'>
-                                Min: {cat.minCredits} cr
-                              </span>
-                            )}
-                          </div>
-                          <div className='mt-2 flex flex-wrap gap-1.5'>
-                            {cat.courses.map((c) => (
-                              <span
-                                key={c.courseCode}
-                                className='rounded-md bg-muted px-2 py-0.5 font-mono text-xs'
-                              >
-                                {c.courseCode}
-                              </span>
-                            ))}
-                            {cat.courses.length === 0 && (
-                              <span className='text-xs text-muted-foreground'>
-                                No courses mapped
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              )}
-
-              {!curriculum && selectedCohort && !loadingCurriculum && (
-                <p className='text-sm text-muted-foreground'>
-                  No curriculum structure found. Import one via Excel or sync from requirements.
-                </p>
-              )}
-
-              {!selectedProgram && (
-                <p className='text-sm text-muted-foreground'>
-                  Select a program above to explore its curriculum knowledge blocks.
-                </p>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </Main>
     </>

@@ -9,9 +9,6 @@ import {
   Bell,
   Monitor,
   Wrench,
-  HelpCircle,
-  Library,
-  CalendarCheck,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -43,39 +40,9 @@ export const sidebarData: SidebarData = {
           icon: Users,
         },
         {
-          title: 'Programs',
-          icon: Library,
-          items: [
-            {
-              title: 'All Programs',
-              url: '/apps',
-            },
-          ],
-        },
-      ],
-    },
-    {
-      title: 'Planning',
-      items: [
-        {
-          title: 'Curriculum',
+          title: 'Curriculum Explorer',
+          url: '/curriculum',
           icon: BookOpen,
-          items: [
-            {
-              title: 'Structure',
-              url: '/help-center',
-            },
-          ],
-        },
-        {
-          title: 'Term Planning',
-          icon: CalendarCheck,
-          items: [
-            {
-              title: 'Current Plans',
-              url: '/tasks',
-            },
-          ],
         },
       ],
     },
@@ -112,11 +79,6 @@ export const sidebarData: SidebarData = {
               icon: Monitor,
             },
           ],
-        },
-        {
-          title: 'Help Center',
-          url: '/help-center',
-          icon: HelpCircle,
         },
       ],
     },

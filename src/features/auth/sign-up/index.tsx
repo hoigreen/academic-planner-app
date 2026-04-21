@@ -1,28 +1,22 @@
-import { useEffect } from 'react'
-import { useKeycloak } from '@/lib/keycloak'
+import { Link } from '@tanstack/react-router'
 import { AuthLayout } from '../auth-layout'
 
 /**
- * Redirects to the Keycloak hosted registration page. Clerk's embedded
- * <SignUp /> component has been removed in favour of using Keycloak as the
- * single IdP.
+ * Self-registration is disabled. Users are provisioned by administrators.
  */
 export function SignUp() {
-  const { keycloak, initialized } = useKeycloak()
-
-  useEffect(() => {
-    if (!initialized) return
-    if (!keycloak.authenticated) {
-      keycloak.register({
-        redirectUri: `${window.location.origin}/`,
-      })
-    }
-  }, [initialized, keycloak])
-
   return (
     <AuthLayout>
-      <div className='flex justify-center text-sm text-muted-foreground'>
-        Redirecting to Keycloak registration…
+      <div className='flex flex-col items-center gap-3 text-center'>
+        <p className='text-sm text-muted-foreground'>
+          Self-registration is not available. Please contact your administrator to create an account.
+        </p>
+        <Link
+          to='/sign-in'
+          className='text-sm font-medium underline underline-offset-4 hover:opacity-75'
+        >
+          Back to sign in
+        </Link>
       </div>
     </AuthLayout>
   )

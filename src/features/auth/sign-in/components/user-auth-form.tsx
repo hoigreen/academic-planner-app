@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { sleep, cn } from '@/lib/utils'
+import { useAuthStore, buildAuthUserFromKeycloak, type KeycloakParsedToken } from '@/stores/auth-store'
+import { loginWithPassword, storeTokens, parseJwt } from '@/lib/keycloak-auth'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -20,64 +21,47 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 
 const formSchema = z.object({
-  email: z.email({
-    error: (iss) => (iss.input === '' ? 'Please enter your email' : undefined),
-  }),
-  password: z
-    .string()
-    .min(1, 'Please enter your password')
-    .min(7, 'Password must be at least 7 characters long'),
+  username: z.string().min(1, 'Please enter your username'),
+  password: z.string().min(1, 'Please enter your password'),
 })
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
   redirectTo?: string
 }
 
-export function UserAuthForm({
-  className,
-  redirectTo,
-  ...props
-}: UserAuthFormProps) {
+export function UserAuthForm({ className, redirectTo, ...props }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
   const { auth } = useAuthStore()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+    defaultValues: { username: '', password: '' },
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
+  async function onSubmit(data: z.infer<typeof formSchema>) {
     setIsLoading(true)
+    try {
+      const tokens = await loginWithPassword(data.username, data.password)
 
-    toast.promise(sleep(2000), {
-      loading: 'Signing in...',
-      success: () => {
-        setIsLoading(false)
+      // Parse the access token to extract user identity
+      const parsed = parseJwt(tokens.access_token) as KeycloakParsedToken
+      const user = buildAuthUserFromKeycloak(parsed, import.meta.env.VITE_KEYCLOAK_CLIENT_ID as string)
 
-        // Mock successful authentication with expiry computed at success time
-        const mockUser = {
-          accountNo: 'ACC001',
-          email: data.email,
-          role: ['user'],
-          exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
-        }
+      // Persist tokens and update auth store
+      storeTokens(tokens)
+      auth.setUser(user)
+      auth.setAccessToken(tokens.access_token)
 
-        // Set user and access token
-        auth.setUser(mockUser)
-        auth.setAccessToken('mock-access-token')
-
-        // Redirect to the stored location or default to dashboard
-        const targetPath = redirectTo || '/'
-        navigate({ to: targetPath, replace: true })
-
-        return `Welcome back, ${data.email}!`
-      },
-      error: 'Error',
-    })
+      toast.success(`Welcome, ${user?.name}!`)
+      navigate({ to: redirectTo || '/', replace: true })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sign in failed'
+      toast.error(message)
+      form.setError('password', { message: ' ' }) // highlight field without duplicate text
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -89,12 +73,12 @@ export function UserAuthForm({
       >
         <FormField
           control={form.control}
-          name='email'
+          name='username'
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Username</FormLabel>
               <FormControl>
-                <Input placeholder='name@example.com' {...field} />
+                <Input placeholder='Enter your username' autoComplete='username' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -104,18 +88,12 @@ export function UserAuthForm({
           control={form.control}
           name='password'
           render={({ field }) => (
-            <FormItem className='relative'>
+            <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' {...field} />
+                <PasswordInput placeholder='••••••••' autoComplete='current-password' {...field} />
               </FormControl>
               <FormMessage />
-              <Link
-                to='/forgot-password'
-                className='absolute end-0 -top-0.5 text-sm font-medium text-muted-foreground hover:opacity-75'
-              >
-                Forgot password?
-              </Link>
             </FormItem>
           )}
         />
@@ -123,7 +101,6 @@ export function UserAuthForm({
           {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}
           Sign in
         </Button>
-
       </form>
     </Form>
   )

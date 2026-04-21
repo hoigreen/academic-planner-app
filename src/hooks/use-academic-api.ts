@@ -11,11 +11,17 @@ import {
   fetchEligibleCourses,
   fetchRecommendations,
   fetchStudentPlans,
+  fetchAllStudentPlans,
   createPlan,
   addPlanItem,
   removePlanItem,
+  updatePlanItem,
   validatePlan,
   searchStudents,
+  fetchProgramConcentrations,
+  fetchStudentConcentration,
+  assignStudentConcentration,
+  updateStudentConcentration,
 } from '@/lib/api-client'
 
 export function usePrograms() {
@@ -136,6 +142,14 @@ export function useSearchStudents(params: {
   })
 }
 
+export function useAllStudentPlans(studentId: string | undefined) {
+  return useQuery({
+    queryKey: ['all-student-plans', studentId],
+    queryFn: () => fetchAllStudentPlans(studentId!),
+    enabled: !!studentId,
+  })
+}
+
 export function useCreatePlan() {
   const qc = useQueryClient()
   return useMutation({
@@ -143,6 +157,8 @@ export function useCreatePlan() {
       createPlan(studentId, termCode, courseCodes),
     onSuccess: (_, { studentId, termCode }) => {
       qc.invalidateQueries({ queryKey: ['student-plans', studentId, termCode] })
+      qc.invalidateQueries({ queryKey: ['all-student-plans', studentId] })
+      qc.invalidateQueries({ queryKey: ['validate-plan', studentId, termCode] })
     },
   })
 }
@@ -154,6 +170,8 @@ export function useAddPlanItem() {
       addPlanItem(studentId, termCode, courseCode),
     onSuccess: (_, { studentId, termCode }) => {
       qc.invalidateQueries({ queryKey: ['student-plans', studentId, termCode] })
+      qc.invalidateQueries({ queryKey: ['all-student-plans', studentId] })
+      qc.invalidateQueries({ queryKey: ['validate-plan', studentId, termCode] })
     },
   })
 }
@@ -165,6 +183,82 @@ export function useRemovePlanItem() {
       removePlanItem(studentId, termCode, planId),
     onSuccess: (_, { studentId, termCode }) => {
       qc.invalidateQueries({ queryKey: ['student-plans', studentId, termCode] })
+      qc.invalidateQueries({ queryKey: ['all-student-plans', studentId] })
+      qc.invalidateQueries({ queryKey: ['validate-plan', studentId, termCode] })
+    },
+  })
+}
+
+export function useUpdatePlanItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      studentId,
+      termCode,
+      planId,
+      body,
+    }: {
+      studentId: string
+      termCode: number
+      planId: number
+      body: { status?: string; note?: string }
+    }) => updatePlanItem(studentId, termCode, planId, body),
+    onSuccess: (_, { studentId, termCode }) => {
+      qc.invalidateQueries({ queryKey: ['student-plans', studentId, termCode] })
+      qc.invalidateQueries({ queryKey: ['all-student-plans', studentId] })
+    },
+  })
+}
+
+export function useProgramConcentrations(programCode: string | undefined) {
+  return useQuery({
+    queryKey: ['program-concentrations', programCode],
+    queryFn: () => fetchProgramConcentrations(programCode!),
+    enabled: !!programCode,
+  })
+}
+
+export function useStudentConcentration(studentId: string | undefined) {
+  return useQuery({
+    queryKey: ['student-concentration', studentId],
+    queryFn: () => fetchStudentConcentration(studentId!),
+    enabled: !!studentId,
+    retry: false,
+  })
+}
+
+export function useAssignConcentration() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      studentId,
+      concentrationId,
+      approvedTermCode,
+    }: {
+      studentId: string
+      concentrationId: number
+      approvedTermCode?: number
+    }) => assignStudentConcentration(studentId, concentrationId, approvedTermCode),
+    onSuccess: (_, { studentId }) => {
+      qc.invalidateQueries({ queryKey: ['student-concentration', studentId] })
+    },
+  })
+}
+
+export function useUpdateConcentration() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      studentId,
+      concentrationId,
+      approvedTermCode,
+    }: {
+      studentId: string
+      concentrationId: number
+      approvedTermCode?: number
+    }) => updateStudentConcentration(studentId, concentrationId, approvedTermCode),
+    onSuccess: (_, { studentId }) => {
+      qc.invalidateQueries({ queryKey: ['student-concentration', studentId] })
     },
   })
 }

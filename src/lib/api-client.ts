@@ -233,6 +233,23 @@ export interface PlanValidationResultDto {
   warnings: string[]
 }
 
+// Concentrations
+export interface ConcentrationDto {
+  concentrationId: number
+  concentrationCode: string
+  concentrationName: string
+  minCredits: number | null
+}
+
+export interface StudentConcentrationDto {
+  studentId: string
+  concentrationId: number
+  concentrationCode: string
+  concentrationName: string
+  approvedTermCode: number | null
+  status: string
+}
+
 // Search
 export interface StudentSearchResultDto {
   students: StudentDto[]
@@ -330,7 +347,7 @@ export async function removePlanItem(studentId: string, termCode: number, planId
 }
 
 export async function validatePlan(studentId: string, termCode: number) {
-  const { data } = await apiClient.get<ApiEnvelope<PlanValidationResultDto>>(
+  const { data } = await apiClient.post<ApiEnvelope<PlanValidationResultDto>>(
     `/students/${studentId}/plans/${termCode}/validate`
   )
   return data.data
@@ -347,6 +364,70 @@ export async function searchStudents(params: {
   const { data } = await apiClient.get<ApiEnvelope<StudentSearchResultDto>>(
     '/curriculum/students/search',
     { params }
+  )
+  return data.data
+}
+
+export async function fetchAllStudentPlans(studentId: string) {
+  const { data } = await apiClient.get<ApiEnvelope<PlanByTermDto[]>>(`/students/${studentId}/plans`)
+  return data.data
+}
+
+export async function updatePlanItem(
+  studentId: string,
+  termCode: number,
+  planId: number,
+  body: { status?: string; note?: string }
+) {
+  const { data } = await apiClient.patch<ApiEnvelope<PlanItemDto>>(
+    `/students/${studentId}/plans/${termCode}/items/${planId}`,
+    body
+  )
+  return data.data
+}
+
+export async function fetchProgramConcentrations(programCode: string) {
+  const { data } = await apiClient.get<ApiEnvelope<ConcentrationDto[]>>(
+    `/programs/${programCode}/concentrations`
+  )
+  return data.data
+}
+
+export async function fetchStudentConcentration(studentId: string): Promise<StudentConcentrationDto | null> {
+  try {
+    const { data } = await apiClient.get<ApiEnvelope<StudentConcentrationDto>>(
+      `/students/${studentId}/concentration`
+    )
+    return data.data
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'response' in err) {
+      const axiosErr = err as { response?: { status?: number } }
+      if (axiosErr.response?.status === 404) return null
+    }
+    throw err
+  }
+}
+
+export async function assignStudentConcentration(
+  studentId: string,
+  concentrationId: number,
+  approvedTermCode?: number
+) {
+  const { data } = await apiClient.post<ApiEnvelope<StudentConcentrationDto>>(
+    `/students/${studentId}/concentration`,
+    { concentrationId, approvedTermCode: approvedTermCode ?? null }
+  )
+  return data.data
+}
+
+export async function updateStudentConcentration(
+  studentId: string,
+  concentrationId: number,
+  approvedTermCode?: number
+) {
+  const { data } = await apiClient.patch<ApiEnvelope<StudentConcentrationDto>>(
+    `/students/${studentId}/concentration`,
+    { concentrationId, approvedTermCode: approvedTermCode ?? null }
   )
   return data.data
 }

@@ -1,9 +1,16 @@
-import { useEffect } from 'react'
-import { Outlet } from '@tanstack/react-router'
-import { useKeycloak } from '@/lib/keycloak'
+import { useEffect, useState } from 'react'
+import { Outlet, useNavigate, useLocation } from '@tanstack/react-router'
 import { getCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
 import { setTokenGetter } from '@/lib/api-client'
+import {
+  refreshAccessToken,
+  storeTokens,
+  clearStoredTokens,
+  isTokenExpired,
+  getStoredRefreshToken,
+  parseJwt,
+} from '@/lib/keycloak-auth'
 import {
   buildAuthUserFromKeycloak,
   useAuthStore,
@@ -15,53 +22,74 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { SkipToMain } from '@/components/skip-to-main'
 
-type AuthenticatedLayoutProps = {
-  children?: React.ReactNode
-}
-
-export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
+export function AuthenticatedLayout() {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
-  const { keycloak, initialized } = useKeycloak()
-  const setUser = useAuthStore((s) => s.auth.setUser)
-  const setAccessToken = useAuthStore((s) => s.auth.setAccessToken)
+  const { auth } = useAuthStore()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [status, setStatus] = useState<'checking' | 'authenticated'>('checking')
 
-  // Wire Keycloak's token getter into the API client interceptor.
-  // `updateToken(30)` transparently refreshes tokens about to expire.
   useEffect(() => {
-    setTokenGetter(async () => {
-      try {
-        if (!keycloak.authenticated) return null
-        await keycloak.updateToken(30)
-        return keycloak.token ?? null
-      } catch {
-        return null
+    const check = async () => {
+      const accessToken = useAuthStore.getState().auth.accessToken
+
+      // If we already have a valid access token in the store, proceed
+      if (accessToken && !isTokenExpired()) {
+        setStatus('authenticated')
+        return
       }
-    })
-  }, [keycloak])
 
-  // Sync Keycloak identity into the local auth store whenever the token changes.
-  useEffect(() => {
-    if (!initialized) return
-    if (keycloak.authenticated && keycloak.token) {
-      const parsed = keycloak.tokenParsed as KeycloakParsedToken | undefined
-      setUser(
-        buildAuthUserFromKeycloak(parsed, import.meta.env.VITE_KEYCLOAK_CLIENT_ID)
-      )
-      setAccessToken(keycloak.token)
-    }
-  }, [initialized, keycloak.authenticated, keycloak.token, keycloak.tokenParsed, setAccessToken, setUser])
+      // Try to silently refresh using the stored refresh token
+      if (getStoredRefreshToken()) {
+        try {
+          const tokens = await refreshAccessToken()
+          storeTokens(tokens)
+          const parsed = parseJwt(tokens.access_token) as KeycloakParsedToken
+          auth.setUser(buildAuthUserFromKeycloak(parsed, import.meta.env.VITE_KEYCLOAK_CLIENT_ID as string))
+          auth.setAccessToken(tokens.access_token)
+          setStatus('authenticated')
+          return
+        } catch {
+          clearStoredTokens()
+          auth.reset()
+        }
+      }
 
-  // Redirect unauthenticated users straight to the Keycloak login screen.
-  useEffect(() => {
-    if (!initialized) return
-    if (!keycloak.authenticated) {
-      keycloak.login({
-        redirectUri: window.location.href,
+      // No valid session — send to sign-in, preserving the intended destination
+      navigate({
+        to: '/sign-in',
+        search: { redirect: location.href },
+        replace: true,
       })
     }
-  }, [initialized, keycloak])
 
-  if (!initialized || !keycloak.authenticated) return null
+    void check()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Keep the API client's token getter up to date with auto-refresh logic
+  useEffect(() => {
+    setTokenGetter(async () => {
+      if (isTokenExpired()) {
+        try {
+          const tokens = await refreshAccessToken()
+          storeTokens(tokens)
+          const parsed = parseJwt(tokens.access_token) as KeycloakParsedToken
+          auth.setUser(buildAuthUserFromKeycloak(parsed, import.meta.env.VITE_KEYCLOAK_CLIENT_ID as string))
+          auth.setAccessToken(tokens.access_token)
+          return tokens.access_token
+        } catch {
+          clearStoredTokens()
+          auth.reset()
+          void navigate({ to: '/sign-in', replace: true })
+          return null
+        }
+      }
+      return useAuthStore.getState().auth.accessToken || null
+    })
+  }, [auth, navigate])
+
+  if (status === 'checking') return null
 
   return (
     <SearchProvider>
@@ -76,7 +104,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
               'peer-data-[variant=inset]:has-data-[layout=fixed]:h-[calc(100svh-(var(--spacing)*4))]'
             )}
           >
-            {children ?? <Outlet />}
+            <Outlet />
           </SidebarInset>
         </SidebarProvider>
       </LayoutProvider>
